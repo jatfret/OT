@@ -4,6 +4,7 @@
       type="text"
       required
       class="paper-title"
+      id="paper-title"
       maxlength="100"
       v-model="paperTitle"
       @change.stop.prevent="savePaper"
@@ -12,6 +13,7 @@
     <textarea
       type="text"
       class="paper-description"
+      id="paper-description"
       maxlength="300"
       v-model="paperDescription"
       @change.stop.prevent="savePaper"
@@ -22,6 +24,7 @@
 </template>
 
 <script>
+  import selectionUpdate from 'selection-update'
   export default {
     name: 'paper-header',
     props: {
@@ -47,7 +50,19 @@
         this.$emit('savePaper')
       },
       paperHeaderInput () {
+        console.log(1)
         this.$emit('paperHeaderInput', this.paperTitle, this.paperDescription)
+      },
+      updateInput ($input, oldValue, newValue) {
+        let newSelectionPos
+        if (document.activeElement === $input) {
+          const currSelectionPos = {
+            start: $input.selectionStart,
+            end: $input.selectionStart
+          }
+          newSelectionPos = selectionUpdate(currSelectionPos, oldValue, newValue)
+        }
+        return newSelectionPos
       }
     }
   }

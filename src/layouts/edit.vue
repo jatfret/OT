@@ -101,6 +101,11 @@ export default {
       topicAdding: false,
       topicEditingID: null,
       isNew: this.$route.params.id === undefined,
+      updating: false,
+      activeCursorType: null,
+      currentText: null,
+      computedText: null,
+      cursor: null,
       paper: {
         title: newPaperDefault.title,
         description: newPaperDefault.description,
@@ -125,30 +130,44 @@ export default {
       this.username = res.username
     })
     this.socket.on('pushMessage', (res) => {
-      console.log(res)
+      console.log('pushMessage')
       let time
       if (time) {
         clearTimeout(time)
       }
       this.pushMessage = res.message
-      this.username = res.username
-      this.onlineUsers = res.onlineUsers
       time = setTimeout(() => {
         this.pushMessage = null
       }, 10000)
     })
     this.socket.on('updateSuccess', (res) => {
-      console.log('received updated message:', res)
+      console.log('received updated message')
       if (res.data.status) {
         if (this.id === res.data.paper._id) {
-          if (tools.stringifyJSON(res.data.paper) !== tools.stringifyJSON(this.originPaper)) {
+          const originPaperText = tools.stringifyJSON(this.originPaper)
+          const resPaperText = tools.stringifyJSON(res.data.paper)
+          if (originPaperText !== resPaperText) {
             const computedResult = this.getComputedResult(res.data.paper)
+            this.updating = true
+            this.getActiveCursor(computedResult)
             this.paper = _.cloneDeep(computedResult)
             this.originPaper = _.cloneDeep(computedResult)
           }
         }
       }
     })
+  },
+  beforeUpdate () {
+
+  },
+  updated () {
+    if (this.updating) {
+      this.adjustCursor()
+      this.updating = false
+      this.cursor = null
+      this.currentPaperText = null
+      this.computedPaperText = null
+    }
   },
   computed: {
     showMessage: function () {
@@ -165,14 +184,14 @@ export default {
       const transformsCsB = csB.transformAgainst(csA)
       const editingPaperTextNew = csA.apply(originPaperText)
       const transformedText = transformsCsB.apply(editingPaperTextNew)
-      console.log('originPaperText:', originPaperText)
-      console.log('serverPaperText:', serverPaperText)
-      console.log('editingPaperText:', editingPaperText)
-      console.log('csA:', csA)
-      console.log('csB:', csB)
-      console.log('transformsCsB:', transformsCsB)
-      console.log('editingPaperTextNew:', editingPaperTextNew)
-      console.log('textNew:', transformedText)
+      // console.log('originPaperText:', originPaperText)
+      // console.log('serverPaperText:', serverPaperText)
+      // console.log('editingPaperText:', editingPaperText)
+      // console.log('csA:', csA)
+      // console.log('csB:', csB)
+      // console.log('transformsCsB:', transformsCsB)
+      // console.log('editingPaperTextNew:', editingPaperTextNew)
+      // console.log('textNew:', transformedText)
       return tools.parseJSON(transformedText)
     },
     fetchPaper () {
@@ -243,6 +262,30 @@ export default {
       this.paper.title = title
       this.paper.description = description
     },
+    getActiveCursor (computedResult) {
+      const activeEle = document.activeElement
+      if (activeEle && this.updating) {
+        if (activeEle.id === 'paper-title') {
+          this.activeCursorType = 'title'
+          this.currentText = this.paper.title
+          this.computedText = computedResult.title
+        }
+        if (activeEle.id === 'paper-description') {
+          this.activeCursorType = 'description'
+          this.currentText = this.paper.description
+          this.computedText = computedResult.description
+        }
+        this.cursor = activeEle.selectionStart
+      }
+    },
+    adjustCursor () {
+      const activeEle = document.activeElement
+      if (activeEle && this.updating && this.activeCursorType && this.cursor !== undefined) {
+        const cursor = operationTransform.getCursor(this.cursor, this.currentText, this.computedText)
+        console.log('cursor:', cursor)
+        activeEle.setSelectionRange(cursor, cursor)
+      }
+    },
     createPaper () {
       return axios.post(`${remotePath.path}/paper/createPaper`)
     },
@@ -267,7 +310,6 @@ export default {
       })
     },
     savePaper () {
-      console.log(1)
       if (this.isNew) {
         this.createPaper()
           .then((response) => {
