@@ -2,7 +2,7 @@
   <div class="index-page">
     <ul>
       <li>
-        <router-link to="/" v-bind:class="{active: section === 'index'}">首页</router-link>
+        <router-link to="/" v-bind:class="{active: section === 'index'}">介绍</router-link>
       </li>
       <li>
         <router-link to="/list" v-bind:class="{active: section === 'list'}">我的列表</router-link>
